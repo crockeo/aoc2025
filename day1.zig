@@ -37,7 +37,6 @@ pub fn main() !void {
 
         const magnitude = try std.fmt.parseInt(i32, stripped_line[1..], 10);
         const result = add_pos(pos, direction, magnitude);
-        std.debug.print("{} {}; {} --> {} ({})\n", .{ direction, magnitude, pos, result.new_pos, result.crossed_zero });
         pos = result.new_pos;
         if (pos == 0) {
             num_ended_at_zero += 1;
