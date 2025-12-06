@@ -12,33 +12,48 @@ pub fn main() !void {
     var map = try Map.init(allocator, contents);
     defer map.deinit();
 
-    var sum: usize = 0;
-    for (0..map.height) |row| {
-        for (0..map.width) |col| {
-            const crd = Coordinate{ .row = @intCast(row), .col = @intCast(col) };
-            const option = map.get(crd) orelse {
-                continue;
-            };
-            if (option != .roll) {
-                continue;
-            }
-
-            var occupied_neighbors: usize = 0;
-            const neighbors = get_neighbors(crd);
-            for (neighbors) |neighbor| {
-                const value = map.get(neighbor) orelse {
+    var gen: usize = 0;
+    var total_sum: usize = 0;
+    while (true) : (gen += 1) {
+        var sum: usize = 0;
+        var removable = std.ArrayList(Coordinate).empty;
+        defer removable.deinit(allocator);
+        for (0..map.height) |row| {
+            for (0..map.width) |col| {
+                const crd = Coordinate{ .row = @intCast(row), .col = @intCast(col) };
+                const option = map.get(crd) orelse {
                     continue;
                 };
-                if (value == .roll) {
-                    occupied_neighbors += 1;
+                if (option != .roll) {
+                    continue;
+                }
+
+                var occupied_neighbors: usize = 0;
+                const neighbors = get_neighbors(crd);
+                for (neighbors) |neighbor| {
+                    const value = map.get(neighbor) orelse {
+                        continue;
+                    };
+                    if (value == .roll) {
+                        occupied_neighbors += 1;
+                    }
+                }
+                if (occupied_neighbors < 4) {
+                    sum += 1;
+                    try removable.append(allocator, crd);
                 }
             }
-            if (occupied_neighbors < 4) {
-                sum += 1;
-            }
         }
+        if (sum == 0) {
+            break;
+        }
+        total_sum += sum;
+        for (removable.items) |removable_crd| {
+            map.remove(removable_crd);
+        }
+        std.debug.print("(Gen {}) {}\n", .{ gen, sum });
     }
-    std.debug.print("{}\n", .{sum});
+    std.debug.print("Total: {}\n", .{total_sum});
 }
 
 const Coordinate = struct {
@@ -104,6 +119,15 @@ const Map = struct {
         const row: usize = @intCast(crd.row);
         const col: usize = @intCast(crd.col);
         return self.contents[col + row * self.width];
+    }
+
+    pub fn remove(self: *Self, crd: Coordinate) void {
+        if (crd.row < 0 or crd.row >= self.height or crd.col < 0 or crd.col >= self.width) {
+            return;
+        }
+        const row: usize = @intCast(crd.row);
+        const col: usize = @intCast(crd.col);
+        self.contents[col + row * self.width] = .empty;
     }
 };
 
